@@ -3,15 +3,27 @@ document.addEventListener('DOMContentLoaded', () => {
   const status = document.querySelector('[data-form-status]');
   if (!form || !status) return;
 
-  form.addEventListener('submit', (event) => {
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const data = new FormData(form);
-    const name = String(data.get('name') || '').trim();
-    const email = String(data.get('email') || '').trim();
-    const message = String(data.get('message') || '').trim();
-    const subject = encodeURIComponent(`Creative enquiry from ${name}`);
-    const body = encodeURIComponent(`Name: ${name}\nEmail: ${email}\n\n${message}`);
-    status.textContent = 'Opening your email app with the message ready to send.';
-    window.location.href = `mailto:evans.mathibe@mail.com?subject=${subject}&body=${body}`;
+    const submit = form.querySelector('button[type="submit"]');
+    const data = Object.fromEntries(new FormData(form).entries());
+    submit.disabled = true;
+    status.textContent = 'Saving your message…';
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Please check the form and try again.');
+      status.textContent = 'Your message is saved. Opening your email app to complete the send.';
+      form.reset();
+      window.location.href = result.mailto;
+    } catch (error) {
+      status.textContent = `${error.message} You can also email evans.mathibe@mail.com directly.`;
+      submit.disabled = false;
+    }
   });
 });
